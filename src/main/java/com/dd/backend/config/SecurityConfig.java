@@ -30,8 +30,12 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
-                                "/v3/api-docs/**"
+                                "/v3/api-docs/**",
+                                "/error"
                         ).permitAll()
+                        // API aberta durante o desenvolvimento
+                        // TODO: restringir quando a autenticação JWT entrar
+                        .requestMatchers("/api/**").permitAll()
                         // Todo o resto exige autenticação
                         .anyRequest().authenticated()
                 )

@@ -1,0 +1,72 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-carts
+      author: dd
+      changes:
+        - createTable:
+            tableName: carts
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: customer_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_carts_customer_id
+        - createTable:
+            tableName: cart_items
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: cart_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: product_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: quantity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: cart_items
+            columnNames: cart_id, product_id
+            constraintName: uq_cart_items_cart_product
+        - addForeignKeyConstraint:
+            baseTableName: carts
+            baseColumnNames: customer_id
+            referencedTableName: customers
+            referencedColumnNames: id
+            constraintName: fk_carts_customer
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: cart_items
+            baseColumnNames: cart_id
+            referencedTableName: carts
+            referencedColumnNames: id
+            constraintName: fk_cart_items_cart
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: cart_items
+            baseColumnNames: product_id
+            referencedTableName: products
+            referencedColumnNames: id
+            constraintName: fk_cart_items_product
+            onDelete: CASCADE
