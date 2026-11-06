@@ -1,0 +1,10 @@
+# Changelog master do Liquibase.
+# Adicione novas migrations em src/main/resources/db/changelog/changes/ e inclua-as abaixo.
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: dd
+      comment: "Changelog inicial (placeholder) - substitua por migrations reais"
+      changes:
+        - sql:
+            sql: "select 1"
