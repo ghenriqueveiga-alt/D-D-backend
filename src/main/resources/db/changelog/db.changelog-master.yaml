@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/003-create-carts.yaml
   - include:
       file: db/changelog/changes/004-create-orders.yaml
+  - include:
+      file: db/changelog/changes/005-create-stock-movements.yaml

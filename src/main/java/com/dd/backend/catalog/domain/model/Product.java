@@ -68,6 +68,21 @@ public final class Product {
         return this;
     }
 
+    /**
+     * Ajusta o estoque em {@code delta}: positivo soma entrada, negativo
+     * registra saída. O saldo nunca pode ficar negativo — quem pede saída
+     * acima do disponível é recusado pelo domínio.
+     */
+    public Product adjustStock(int delta) {
+        int next = this.stock + delta;
+        if (next < 0) {
+            throw new DomainException(
+                    "Estoque insuficiente: disponível " + this.stock + ", solicitado " + Math.abs(delta));
+        }
+        this.stock = next;
+        return this;
+    }
+
     private static void validate(String externalId, String title, Money price, int stock) {
         if (externalId == null || externalId.isBlank()) {
             throw new DomainException("Identificador externo do produto é obrigatório");

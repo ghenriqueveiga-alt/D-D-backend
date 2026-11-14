@@ -39,9 +39,11 @@ src/main/java/com/dd/backend/
 │           └── external/            # DummyJsonProductSource (adapter da fonte)
 ├── customer/                        # contexto: clientes
 ├── cart/                            # contexto: carrinho por cliente
-└── order/                           # contexto: pedidos (aggregate Order)
-    └── domain/model/Order           # ciclo de vida PENDING→PAID→SHIPPED→DELIVERED
-                                     # (e cancel em PENDING/PAID)
+├── order/                           # contexto: pedidos (aggregate Order)
+│   └── domain/model/Order           # ciclo de vida PENDING→PAID→SHIPPED→DELIVERED
+│                                    # (e cancel em PENDING/PAID)
+└── stock/                           # contexto: gestão de estoque (movimentações)
+    └── domain/model/StockMovement   # registro imutável IN/OUT; o saldo vive em Product.stock
 ```
 
 **Fluxo de uma requisição (ports & adapters):**
@@ -99,6 +101,14 @@ Base: `http://localhost:8080` · Documentação: `/swagger-ui.html` · OpenAPI: 
 | `POST` | `/api/orders/{id}/ship` | `PAID → SHIPPED` |
 | `POST` | `/api/orders/{id}/deliver` | `SHIPPED → DELIVERED` |
 | `POST` | `/api/orders/{id}/cancel` | `PENDING/PAID → CANCELLED` |
+
+### Estoque (gestão de mercadorias)
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/api/stock/movements` | Lista movimentações, mais recentes primeiro (filtro opcional `?productId=1`) |
+| `POST` | `/api/stock/movements` | Registra entrada/saída: `{"productId":1,"type":"IN","quantity":10,"note":"reposição"}` — `type` é `IN` ou `OUT`; saída acima do saldo → `422` |
+| `GET` | `/api/stock/summary` | Resumo: SKUs, unidades, valor em estoque, itens em falta, estoque baixo (≤5) e total de movimentações |
 
 ### Códigos de erro (ProblemDetail RFC 7807)
 
@@ -180,7 +190,7 @@ curl -X POST http://localhost:8080/api/catalog/sync
 ./gradlew build
 ```
 
-23 testes: regras de domínio (`Money`, `Order`, `Cart`) + casos de uso do catálogo (sync e importação em lote) com **fakes** das ports — sem Spring, sem Mockito. O contexto de teste usa o profile `test` (H2 em memória, Liquibase off).
+38 testes: regras de domínio (`Money`, `Order`, `Cart`) + casos de uso do catálogo (sync, importação em lote e ajuste de estoque) e do estoque (movimentações e resumo) com **fakes** das ports — sem Spring, sem Mockito. O contexto de teste usa o profile `test` (H2 em memória, Liquibase off).
 
 ## Exemplo de fluxo completo
 
@@ -208,5 +218,5 @@ curl -X POST localhost:8080/api/orders/1/deliver                  # entrega
 ## Próximos passos
 
 1. **JWT**: autenticação real das endpoints de venda.
-2. **Estoque**: baixa de `Product.stock` na compra (hoje o estoque é apenas informativo, sincronizado da fonte).
+2. **Estoque**: baixa automática de `Product.stock` na compra (hoje o estoque é ajustado manualmente pelas movimentações `IN`/`OUT`).
 3. **Pagamento externo**: adapter de gateway no lugar do `pay` manual.

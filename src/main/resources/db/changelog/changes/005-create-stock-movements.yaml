@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-stock-movements
+      author: dd
+      changes:
+        - createTable:
+            tableName: stock_movements
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: product_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: product_title
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: VARCHAR(8)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: quantity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: note
+                  type: VARCHAR(255)
+              - column:
+                  name: occurred_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: stock_movements
+            indexName: idx_stock_movements_product_id
+            columns:
+              - column:
+                  name: product_id
+        - createIndex:
+            tableName: stock_movements
+            indexName: idx_stock_movements_occurred_at
+            columns:
+              - column:
+                  name: occurred_at
