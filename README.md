@@ -9,8 +9,8 @@ API de vendas de itens reais buscados na internet ([DummyJSON](https://dummyjson
 | Framework | Spring Boot **4.1.2** |
 | Linguagem | Java **21** (toolchain) |
 | Build | Gradle 9 (Kotlin DSL) |
-| Banco | PostgreSQL |
-| Migrações | Liquibase |
+| Banco | PostgreSQL (dev/prod) · H2 em memória (test) |
+| Migrações | Liquibase (perfil `prod`) |
 | Segurança | Spring Security + JWT (jjwt 0.13.0) |
 | Documentação | SpringDoc OpenAPI (Swagger UI) |
 | ORM | Spring Data JPA + Lombok |
@@ -67,6 +67,7 @@ Base: `http://localhost:8080` · Documentação: `/swagger-ui.html` · OpenAPI: 
 | Método | Rota | Descrição |
 |---|---|---|
 | `POST` | `/api/catalog/sync` | Busca **todos** os itens no DummyJSON e faz upsert no catálogo local |
+| `POST` | `/api/products/import` | Importa **vários produtos em lote** (`{"products":[...]}` — upsert por `externalId`; linhas inválidas voltam em `rejections`, sem interromper as demais) |
 | `GET` | `/api/products` | Lista produtos (filtro opcional `?category=smartphones`) |
 | `GET` | `/api/products/{id}` | Detalha um produto |
 
@@ -111,7 +112,34 @@ Base: `http://localhost:8080` · Documentação: `/swagger-ui.html` · OpenAPI: 
 
 ## Como rodar
 
-### 1. Banco (PostgreSQL)
+### Perfis de execução
+
+O perfil padrão é o `dev` (`spring.profiles.default=dev` em `application.properties`); escolha outro com `--spring.profiles.active=<perfil>`:
+
+| Perfil | Banco | Schema | Console |
+|---|---|---|---|
+| `dev` (padrão) | PostgreSQL (`localhost:5432/dd_store`) | Hibernate (`ddl-auto=update`), Liquibase **desligado** | — |
+| `prod` | PostgreSQL (`localhost:5432/dd_store`) | Liquibase executa as migrations e Hibernate só **valida** (`ddl-auto=validate`) | — |
+| `test` | H2 em memória (`jdbc:h2:mem:testdb`, modo PostgreSQL) | Hibernate (`ddl-auto=create-drop`), Liquibase desligado | [`/h2-console`](http://localhost:8080/h2-console) liberado (JDBC URL `jdbc:h2:mem:testdb`, usuário `sa`) |
+
+Arquivos: `application.properties` (comum) + `application-dev.properties`, `application-prod.properties`, `application-test.properties`.
+
+> **Spring Boot 4**: a autoconfiguração do console H2 saiu do `spring-boot-autoconfigure` e vive no módulo `spring-boot-h2console` (declarado no `build.gradle.kts`); sem ele, `/h2-console` responde 404 mesmo com `spring.h2.console.enabled=true`.
+
+```bash
+./gradlew bootRunDev     # dev (padrão) — PostgreSQL, porta 8090
+./gradlew bootRunProd    # prod — Liquibase + PostgreSQL, porta 8092
+./gradlew bootRunTest    # test — H2 + h2-console, porta 8091 → http://localhost:8091/h2-console
+# porta alternativa: ./gradlew bootRunTest -Pport=9091
+```
+
+**No IntelliJ**: painel *Gradle* → `D-D-backend` → `Tasks` → `application` → duplo clique em `bootRunDev` / `bootRunTest` / `bootRunProd` (botão direito → *Run* salva uma Run Configuration reutilizável).
+
+> `bootRun` sem argumentos continua funcionando (perfil `dev` por padrão).
+
+> Em `test`, o H2 também é o banco dos testes JUnit (`@ActiveProfiles("test")`).
+
+### 1. Banco (PostgreSQL — perfis dev/prod)
 
 ```bash
 docker run -d --name dd-postgres \
@@ -119,7 +147,7 @@ docker run -d --name dd-postgres \
   -e POSTGRES_DB=dd_store -p 5432:5432 postgres:16-alpine
 ```
 
-As migrations do Liquibase (`src/main/resources/db/changelog/changes/`) executam automaticamente na subida.
+As migrations do Liquibase (`src/main/resources/db/changelog/changes/`) executam automaticamente na subida **do perfil `prod`**; no `dev` o schema é gerido pelo Hibernate (`ddl-auto=update`).
 
 ### 2. Aplicação
 
@@ -152,7 +180,7 @@ curl -X POST http://localhost:8080/api/catalog/sync
 ./gradlew build
 ```
 
-18 testes: regras de domínio (`Money`, `Order`, `Cart`) + caso de uso de sync com **fakes** das ports — sem Spring, sem banco, sem Mockito. O contexto de teste usa o profile `test` (Liquibase off, `ddl-auto=none`).
+23 testes: regras de domínio (`Money`, `Order`, `Cart`) + casos de uso do catálogo (sync e importação em lote) com **fakes** das ports — sem Spring, sem Mockito. O contexto de teste usa o profile `test` (H2 em memória, Liquibase off).
 
 ## Exemplo de fluxo completo
 
@@ -174,6 +202,7 @@ curl -X POST localhost:8080/api/orders/1/deliver                  # entrega
 ## Segurança
 
 - `/api/**` está **liberada** durante o desenvolvimento; o resto exige autenticação (HTTP Basic provisório).
+- `/h2-console/**` está liberado (apenas relevante no perfil `test`, onde o console é habilitado).
 - **TODO**: restringir `/api/**` com JWT (`AuthenticationService` + `JwtAuthenticationFilter` no `SecurityConfig`) e desabilitar SpringDoc/Spring Security user auto-generated em produção.
 
 ## Próximos passos

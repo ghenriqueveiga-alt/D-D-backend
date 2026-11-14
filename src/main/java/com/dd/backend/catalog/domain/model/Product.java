@@ -72,8 +72,14 @@ public final class Product {
         if (externalId == null || externalId.isBlank()) {
             throw new DomainException("Identificador externo do produto é obrigatório");
         }
+        if (externalId.trim().length() > 64) {
+            throw new DomainException("Identificador externo do produto deve ter no máximo 64 caracteres");
+        }
         if (title == null || title.isBlank()) {
             throw new DomainException("Título do produto é obrigatório");
+        }
+        if (title.trim().length() > 255) {
+            throw new DomainException("Título do produto deve ter no máximo 255 caracteres");
         }
         if (price == null) {
             throw new DomainException("Preço do produto é obrigatório");

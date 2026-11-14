@@ -33,6 +33,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/error"
                         ).permitAll()
+                        // Console do H2 (perfil test) — sem autenticação
+                        .requestMatchers("/h2-console/**").permitAll()
                         // API aberta durante o desenvolvimento
                         // TODO: restringir quando a autenticação JWT entrar
                         .requestMatchers("/api/**").permitAll()
@@ -40,7 +42,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 // Provisional: login com o usuário gerado no console (user/<senha>)
-                .httpBasic(Customizer.withDefaults());
+                .httpBasic(Customizer.withDefaults())
+                // O h2-console renderiza em frames na mesma origem
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));
 
         return http.build();
     }
