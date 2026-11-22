@@ -2,6 +2,7 @@ package com.dd.backend.order.infrastructure.outbound.persistence;
 
 import com.dd.backend.order.domain.model.Order;
 import com.dd.backend.order.domain.model.OrderItem;
+import com.dd.backend.order.domain.model.ShippingAddress;
 import com.dd.backend.order.domain.repository.OrderRepository;
 import com.dd.backend.shared.domain.Money;
 import java.util.List;
@@ -47,9 +48,20 @@ public class OrderRepositoryAdapter implements OrderRepository {
         entity.setCustomerId(order.getCustomerId());
         entity.setStatus(order.getStatus());
         entity.setTotal(order.getTotal().amount());
+        entity.setShipping(order.getShipping().amount());
         entity.setPaymentMethod(order.getPaymentMethod());
         entity.setCreatedAt(order.getCreatedAt());
         entity.setPaidAt(order.getPaidAt());
+        if (order.getAddress() != null) {
+            entity.setRecipientName(order.getAddress().recipientName());
+            entity.setPhone(order.getAddress().phone());
+            entity.setCep(order.getAddress().cep());
+            entity.setStreet(order.getAddress().street());
+            entity.setAddressNumber(order.getAddress().number());
+            entity.setComplement(order.getAddress().complement());
+            entity.setCity(order.getAddress().city());
+            entity.setUf(order.getAddress().uf());
+        }
         entity.setItems(order.getItems().stream().map(this::toEntity).toList());
         return entity;
     }
@@ -78,6 +90,24 @@ public class OrderRepositoryAdapter implements OrderRepository {
                 entity.getStatus(),
                 entity.getPaymentMethod(),
                 entity.getCreatedAt(),
-                entity.getPaidAt());
+                entity.getPaidAt(),
+                toAddress(entity),
+                entity.getShipping() == null ? null : Money.of(entity.getShipping()));
+    }
+
+    /** Pedidos anteriores ao checkout não têm endereço gravado. */
+    private ShippingAddress toAddress(OrderJpaEntity entity) {
+        if (entity.getRecipientName() == null) {
+            return null;
+        }
+        return new ShippingAddress(
+                entity.getRecipientName(),
+                entity.getPhone(),
+                entity.getCep(),
+                entity.getStreet(),
+                entity.getAddressNumber(),
+                entity.getComplement(),
+                entity.getCity(),
+                entity.getUf());
     }
 }

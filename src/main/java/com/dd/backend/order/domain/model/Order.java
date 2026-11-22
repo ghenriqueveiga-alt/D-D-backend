@@ -18,6 +18,8 @@ public final class Order {
     private List<OrderItem> items;
     private OrderStatus status;
     private Money total;
+    private Money shipping;
+    private ShippingAddress address;
     private PaymentMethod paymentMethod;
     private Instant createdAt;
     private Instant paidAt;
@@ -25,8 +27,37 @@ public final class Order {
     private Order() {
     }
 
-    /** Registra um novo pedido em PENDING com o total somado dos itens. */
-    public static Order place(Long customerId, List<OrderItem> items) {
+    /**
+     * Registra um novo pedido em PENDING com o total somado dos itens mais o
+     * frete. O endereço de entrega é obrigatório (todo pedido nasce do fluxo
+     * de checkout).
+     */
+    public static Order place(Long customerId, List<OrderItem> items, ShippingAddress address, Money shipping) {
+        if (address == null) {
+            throw new DomainException("Endereço de entrega é obrigatório");
+        }
+        return assemble(customerId, items, address, shipping);
+    }
+
+    /**
+     * Reconstituição a partir do banco (uso exclusivo da camada de
+     * persistência). Pedidos antigos (anteriores ao checkout com endereço)
+     * podem ter {@code address == null}.
+     */
+    public static Order restore(Long id, Long customerId, List<OrderItem> items, OrderStatus status,
+                                PaymentMethod paymentMethod, Instant createdAt, Instant paidAt,
+                                ShippingAddress address, Money shipping) {
+        Order order = assemble(customerId, items, address, shipping);
+        order.id = Objects.requireNonNull(id, "id é obrigatório na reconstituição");
+        order.status = Objects.requireNonNull(status, "status é obrigatório na reconstituição");
+        order.paymentMethod = paymentMethod;
+        order.createdAt = Objects.requireNonNull(createdAt, "createdAt é obrigatório na reconstituição");
+        order.paidAt = paidAt;
+        return order;
+    }
+
+    /** Monta o aggregate com o total = itens + frete (regras de pedido em comum). */
+    private static Order assemble(Long customerId, List<OrderItem> items, ShippingAddress address, Money shipping) {
         if (customerId == null) {
             throw new DomainException("Cliente do pedido é obrigatório");
         }
@@ -36,23 +67,14 @@ public final class Order {
         Order order = new Order();
         order.customerId = customerId;
         order.items = new ArrayList<>(items);
+        order.address = address;
+        order.shipping = shipping == null ? Money.zero() : shipping;
         order.status = OrderStatus.PENDING;
         order.total = items.stream()
                 .map(OrderItem::subtotal)
-                .reduce(Money.zero(), Money::plus);
+                .reduce(Money.zero(), Money::plus)
+                .plus(order.shipping);
         order.createdAt = Instant.now();
-        return order;
-    }
-
-    /** Reconstituição a partir do banco (uso exclusivo da camada de persistência). */
-    public static Order restore(Long id, Long customerId, List<OrderItem> items, OrderStatus status,
-                                PaymentMethod paymentMethod, Instant createdAt, Instant paidAt) {
-        Order order = place(customerId, items);
-        order.id = Objects.requireNonNull(id, "id é obrigatório na reconstituição");
-        order.status = Objects.requireNonNull(status, "status é obrigatório na reconstituição");
-        order.paymentMethod = paymentMethod;
-        order.createdAt = Objects.requireNonNull(createdAt, "createdAt é obrigatório na reconstituição");
-        order.paidAt = paidAt;
         return order;
     }
 
@@ -120,6 +142,14 @@ public final class Order {
 
     public Money getTotal() {
         return total;
+    }
+
+    public Money getShipping() {
+        return shipping;
+    }
+
+    public ShippingAddress getAddress() {
+        return address;
     }
 
     public PaymentMethod getPaymentMethod() {

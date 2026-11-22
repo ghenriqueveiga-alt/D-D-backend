@@ -52,6 +52,34 @@ public class OrderJpaEntity {
     @Column(name = "paid_at")
     private Instant paidAt;
 
+    // Checkout: endereço de entrega (nulos apenas em pedidos antigos).
+    @Column(name = "recipient_name")
+    private String recipientName;
+
+    @Column(name = "phone", length = 32)
+    private String phone;
+
+    @Column(name = "cep", length = 9)
+    private String cep;
+
+    @Column(name = "street")
+    private String street;
+
+    @Column(name = "address_number", length = 16)
+    private String addressNumber;
+
+    @Column(name = "complement")
+    private String complement;
+
+    @Column(name = "city", length = 128)
+    private String city;
+
+    @Column(name = "uf", length = 2)
+    private String uf;
+
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal shipping;
+
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "order_id", nullable = false)
     private List<OrderItemJpaEntity> items = new ArrayList<>();

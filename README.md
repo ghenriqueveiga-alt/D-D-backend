@@ -94,13 +94,13 @@ Base: `http://localhost:8080` · Documentação: `/swagger-ui.html` · OpenAPI: 
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `POST` | `/api/orders` | Registra pedido: `{"customerId":1,"fromCart":true}` **ou** `{"customerId":1,"items":[{"productId":10,"quantity":3}]}` — no fluxo de carrinho, esvazia o carrinho após a compra |
+| `POST` | `/api/orders` | **Checkout**: registra o pedido com endereço, frete, itens e pagamento. Identificação: `customerId` **ou** `customer: {"name","email"}` (localiza pelo e-mail ou cria o cadastro). Ex.: `{"customer":{"name":"Maria","email":"maria@exemplo.com"},"items":[{"productId":10,"quantity":3}],"address":{"recipientName":"Maria","phone":"11 99999-9999","cep":"01310-100","street":"Av. Paulista","number":"1000","city":"São Paulo","uf":"SP"},"shipping":19.9,"paymentMethod":"PIX"}` — valida o saldo de todos os itens, **baixa o estoque** (movimentação `OUT` com nota `Pedido #id`), esvazia o carrinho quando `fromCart:true` e, com `paymentMethod`, nasce `PAID`; sem pagamento, fica `PENDING` |
 | `GET` | `/api/orders` | Lista pedidos (filtro opcional `?customerId=1`) |
-| `GET` | `/api/orders/{id}` | Detalha pedido |
+| `GET` | `/api/orders/{id}` | Detalha pedido (inclui `address` e `shipping`) |
 | `POST` | `/api/orders/{id}/pay` | `PENDING → PAID` (`{"paymentMethod":"PIX"}` — PIX, CREDIT_CARD, DEBIT_CARD, BOLETO) |
 | `POST` | `/api/orders/{id}/ship` | `PAID → SHIPPED` |
 | `POST` | `/api/orders/{id}/deliver` | `SHIPPED → DELIVERED` |
-| `POST` | `/api/orders/{id}/cancel` | `PENDING/PAID → CANCELLED` |
+| `POST` | `/api/orders/{id}/cancel` | `PENDING/PAID → CANCELLED` e **devolve o estoque** (movimentação `IN` com nota `Pedido #id cancelado`) |
 
 ### Estoque (gestão de mercadorias)
 
@@ -202,11 +202,15 @@ curl -X POST localhost:8080/api/customers -H 'Content-Type: application/json' \
 curl -X POST localhost:8080/api/cart/1/items -H 'Content-Type: application/json' \
      -d '{"productId":1,"quantity":2}'                            # adiciona ao carrinho
 curl -X POST localhost:8080/api/orders -H 'Content-Type: application/json' \
-     -d '{"customerId":1,"fromCart":true}'                        # compra (esvazia o cart)
-curl -X POST localhost:8080/api/orders/1/pay -H 'Content-Type: application/json' \
-     -d '{"paymentMethod":"PIX"}'                                 # paga
+     -d '{"customer":{"name":"Maria","email":"maria@example.com"},
+          "items":[{"productId":1,"quantity":2}],
+          "address":{"recipientName":"Maria","phone":"11 99999-9999","cep":"01310-100",
+                     "street":"Av. Paulista","number":"1000","city":"São Paulo","uf":"SP"},
+          "shipping":19.9,"paymentMethod":"PIX"}'            # checkout: baixa estoque e paga
 curl -X POST localhost:8080/api/orders/1/ship                     # envia
 curl -X POST localhost:8080/api/orders/1/deliver                  # entrega
+# ou cancela e devolve o estoque:
+curl -X POST localhost:8080/api/orders/1/cancel
 ```
 
 ## Segurança

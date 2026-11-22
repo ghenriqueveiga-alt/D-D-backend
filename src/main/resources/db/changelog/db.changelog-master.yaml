@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/changes/004-create-orders.yaml
   - include:
       file: db/changelog/changes/005-create-stock-movements.yaml
+  - include:
+      file: db/changelog/changes/006-add-checkout-to-orders.yaml
